@@ -118,13 +118,6 @@ namespace ACE.Server.WorldObjects
                     houseRentWarnTimestamp = Time.GetFutureUnixTime(houseRentWarnInterval);
             }
 
-            if (leyLineAmuletsTickTimestamp == 0 || currentUnixTime > leyLineAmuletsTickTimestamp)
-            {
-                LeyLineAmuletsTick(currentUnixTime);
-
-                leyLineAmuletsTickTimestamp = Time.GetFutureUnixTime(leyLineAmuletsTickInterval);
-            }
-
             if (currentUnixTime > vitaeTickTimestamp)
             {
                 var vitae = EnchantmentManager.GetVitae();
@@ -138,16 +131,6 @@ namespace ACE.Server.WorldObjects
                 vitaeTickTimestamp = Time.GetFutureUnixTime(vitaeTickInterval);
             }
 
-            DoTHotTick(currentUnixTime);
-
-            if (PvPInciteTickTimestamp == 0)
-                PvPInciteTickTimestamp = Time.GetFutureUnixTime(PropertyManager.GetLong("bz_whispers_login_delay").Item);
-            else if (currentUnixTime > PvPInciteTickTimestamp)
-            {
-                PvPInciteTick(currentUnixTime);
-                PvPInciteTickTimestamp = Time.GetFutureUnixTime(PropertyManager.GetLong("bz_whispers_interval").Item);
-            }
-               
             if (enchantmentTickTimestamp == 0 || currentUnixTime > enchantmentTickTimestamp)
             {
                 if (EnchantmentManager.HasEnchantments)
@@ -155,31 +138,50 @@ namespace ACE.Server.WorldObjects
                 enchantmentTickTimestamp = Time.GetFutureUnixTime(enchantmentTickInterval);
             }
 
-
-            if (RoadCheckTimestamp == 0 || currentUnixTime > RoadCheckTimestamp)
+            if (Common.ConfigManager.Config.Server.WorldRuleset == Common.Ruleset.CustomDM)
             {
-                if (!IsLoggingOut && !Indoors && CurrentLandblock != null && CurrentLandblock.PhysicsLandblock.OnRoad(Location.Pos))
+                if (leyLineAmuletsTickTimestamp == 0 || currentUnixTime > leyLineAmuletsTickTimestamp)
                 {
-                    // We require 2 ticks before activating the buff as a way to minimize activations while just crossing the road
-                    // as that will make the player momentarily pause their movement which can be annoying if you're not following the road.
-                    if (OnRoadStatus == 1)
-                    {
-                        Session.Network.EnqueueSend(new GameMessageSystemChat("Your run speed increases due to being on a road.", ChatMessageType.Broadcast));
-                        GrantRoadSpeedBuff();
-                    }
-                    else if (OnRoadStatus == 0)
-                        OnRoadStatus = 1;
+                    LeyLineAmuletsTick(currentUnixTime);
+
+                    leyLineAmuletsTickTimestamp = Time.GetFutureUnixTime(leyLineAmuletsTickInterval);
                 }
-                else if(OnRoadStatus != 0)
+
+                DoTHotTick(currentUnixTime);
+
+                if (PvPInciteTickTimestamp == 0)
+                    PvPInciteTickTimestamp = Time.GetFutureUnixTime(PropertyManager.GetLong("bz_whispers_login_delay").Item);
+                else if (currentUnixTime > PvPInciteTickTimestamp)
                 {
-                    if(OnRoadStatus == 2)
-                    {
-                        Session.Network.EnqueueSend(new GameMessageSystemChat("Your run speed returns to normal as you are no longer on a road.", ChatMessageType.Broadcast));
-                        RemoveRoadSpeedBuff();
-                    }
-                    OnRoadStatus = 0;
+                    PvPInciteTick(currentUnixTime);
+                    PvPInciteTickTimestamp = Time.GetFutureUnixTime(PropertyManager.GetLong("bz_whispers_interval").Item);
                 }
-                RoadCheckTimestamp = Time.GetFutureUnixTime(RoadCheckInterval);
+
+                if (RoadCheckTimestamp == 0 || currentUnixTime > RoadCheckTimestamp)
+                {
+                    if (!IsLoggingOut && !Indoors && CurrentLandblock != null && CurrentLandblock.PhysicsLandblock.OnRoad(Location.Pos))
+                    {
+                        // We require 2 ticks before activating the buff as a way to minimize activations while just crossing the road
+                        // as that will make the player momentarily pause their movement which can be annoying if you're not following the road.
+                        if (OnRoadStatus == 1)
+                        {
+                            Session.Network.EnqueueSend(new GameMessageSystemChat("Your run speed increases due to being on a road.", ChatMessageType.Broadcast));
+                            GrantRoadSpeedBuff();
+                        }
+                        else if (OnRoadStatus == 0)
+                            OnRoadStatus = 1;
+                    }
+                    else if (OnRoadStatus != 0)
+                    {
+                        if (OnRoadStatus == 2)
+                        {
+                            Session.Network.EnqueueSend(new GameMessageSystemChat("Your run speed returns to normal as you are no longer on a road.", ChatMessageType.Broadcast));
+                            RemoveRoadSpeedBuff();
+                        }
+                        OnRoadStatus = 0;
+                    }
+                    RoadCheckTimestamp = Time.GetFutureUnixTime(RoadCheckInterval);
+                }
             }
         }
 
